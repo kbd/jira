@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import os
+from functools import partial
+
+import requests
+
+API_ROOT = 'https://jira.mycorp.com/rest/api/latest'
+
+
+class Jira:
+    def __init__(self, token):
+        self.token = token
+
+    def __getattr__(self, name):
+        return partial(call_jira_api, self.token, name)
+
+
+def call_jira_api(token, method, jql):
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {'jql': jql}
+    resp = requests.get(f'{API_ROOT}/{method}', headers=headers, params=params)
+    return resp.json()
+
+
+if __name__ == '__main__':
+    token = os.environ["JIRA_API_TOKEN"]
+    j = Jira(token)
+    result = j.search('assignee=kdevens')
+    keys = [v["key"] for v in result['issues']]
+    print(keys)
