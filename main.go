@@ -6,9 +6,11 @@ import (
 	"os"
 
 	jira "github.com/andygrunwald/go-jira"
+	"github.com/k0kubun/pp/v3"
 )
 
 func main() {
+	// grab required environment variables
 	token, ok := os.LookupEnv("JIRA_TOKEN")
 	if !ok {
 		fmt.Println("expect JIRA_TOKEN in environment")
@@ -22,6 +24,7 @@ func main() {
 
 	fmt.Printf("token: %s, url: %s\n", token, url)
 
+	// create the jira client
 	tp := jira.BearerAuthTransport{
 		Token: token,
 	}
@@ -30,9 +33,13 @@ func main() {
 		log.Fatalf("couldn't create JIRA client: %s", err)
 	}
 
-	u, _, err := client.User.GetSelf()
+	// run a method
+	// parse command line arguments and call whatever method through reflection
+	jql := "assignee=kdevens"
+	issues, _, err := client.Issue.Search(jql, nil)
 	if err != nil {
-		log.Fatalf("couldn't get user: %s", err)
+		log.Fatalf("error in query: %s", err)
 	}
-	fmt.Printf("\nEmail: %v\nSuccess!\n", u.EmailAddress)
+	// fmt.Printf("%#v", issues)
+	pp.Print(issues[0].Key, issues[0].Fields.Summary)
 }
