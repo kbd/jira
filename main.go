@@ -25,9 +25,7 @@ func main() {
 	fmt.Printf("token: %s, url: %s\n", token, url)
 
 	// create the jira client
-	tp := jira.BearerAuthTransport{
-		Token: token,
-	}
+	tp := jira.BearerAuthTransport{Token: token}
 	client, err := jira.NewClient(tp.Client(), url)
 	if err != nil {
 		log.Fatalf("couldn't create JIRA client: %s", err)
@@ -40,6 +38,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("error in query: %s", err)
 	}
-	// fmt.Printf("%#v", issues)
 	pp.Print(issues[0].Key, issues[0].Fields.Summary)
 }
