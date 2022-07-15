@@ -3,8 +3,10 @@ module example.com/jira
 go 1.18
 
 require (
+	github.com/alecthomas/kong v0.6.1
 	github.com/andygrunwald/go-jira v1.15.1
 	github.com/k0kubun/pp/v3 v3.1.0
+	github.com/kbd/pps v0.0.0-20220713225428-cc408ba1cec4
 )
 
 require (

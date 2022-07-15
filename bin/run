@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -Eeuxo pipefail
+go run main.go "$@"
