@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
+	"path"
+	"strings"
 
 	"github.com/alecthomas/kong"
 	"github.com/andygrunwald/go-jira"
@@ -39,49 +42,85 @@ func main() {
 	}
 
 	// grab required environment variables
-	token, ok := os.LookupEnv("JIRA_TOKEN")
+	jiraToken, ok := os.LookupEnv("JIRA_TOKEN")
 	if !ok {
 		log.Fatalf("expect JIRA_TOKEN in environment")
 	}
-	url, ok := os.LookupEnv("JIRA_URL")
+	jiraUrl, ok := os.LookupEnv("JIRA_URL")
 	if !ok {
 		log.Fatal("expect JIRA_URL in environment")
 	}
 
-	fmt.Printf("token: %s..., url: %s\n\n", token[0:5], url)
-	pp.Println(CLI)
+	// fmt.Printf("token: %s..., url: %s\n\n", token[0:5], url)
+	// pp.Println(CLI)
 
 	// run a method
 	// parse command line arguments and call whatever method through reflection
 	jql := ""
 	if CLI.File != "" {
-		fmt.Println("Got file: ", CLI.File)
+		// fmt.Println("Got file: ", CLI.File)
 		jqlbytes, err := os.ReadFile(CLI.File)
 		if err != nil {
 			log.Fatalf("couldn't read file: %s", CLI.File)
 		}
 		jql = string(jqlbytes)
-		fmt.Println("Got jql:", jql)
+		// fmt.Println("Got jql:", jql)
 	}
 
 	// create the jira client
-	tp := jira.BearerAuthTransport{Token: token}
-	client, err := jira.NewClient(tp.Client(), url)
+	tp := jira.BearerAuthTransport{Token: jiraToken}
+	client, err := jira.NewClient(tp.Client(), jiraUrl)
 	if err != nil {
 		log.Fatalf("couldn't create JIRA client: %s", err)
 	}
 
+	// search for issues with the provided query
 	issues, _, err := client.Issue.Search(string(jql), nil)
 	if err != nil {
 		log.Fatalf("error in query: %s", err)
 	}
 
+	// show fuzzy finder for issues
 	options := make([]string, len(issues))
 	for i, issue := range issues {
 		options[i] = fmt.Sprintf("%s ('%s'): %s", issue.Key, issue.Fields.Status.Name, issue.Fields.Summary)
 	}
+	result := fzf(options)
+	if len(result) == 0 { // nothing chosen
+		os.Exit(0)
+	}
 
-	fzf(options)
+	// for each result, split on the first space and take that as the value
+	var keys []string
+	for _, r := range result {
+		keys = append(keys, strings.SplitN(r, " ", 2)[0])
+	}
+	issueUrl := getIssueUrlForKey(jiraUrl, keys[0])
+	code := openBrowser(issueUrl)
+	if code != 0 {
+		fmt.Printf("Got return code %d from process\n", code)
+	}
+}
+
+func openBrowser(url string) (returncode int) {
+	fmt.Printf("Launching: %s\n", url)
+	safeUrl := strings.ReplaceAll(url, "'", "\\'")
+	pythonCode := fmt.Sprintf("import webbrowser as b; b.open(r'%s')", safeUrl)
+	// fmt.Printf("Executing: %s\n", pythonCode)
+	cmd := exec.Command("python3", "-c", pythonCode)
+	if err := cmd.Run(); err != nil {
+		return 1
+	}
+	return cmd.ProcessState.ExitCode()
+}
+
+func getIssueUrlForKey(jiraUrl, key string) (issueUrl string) {
+	parsedUrl, err := url.Parse(jiraUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	parsedUrl.Path = path.Join(parsedUrl.Path, "browse", key)
+	return parsedUrl.String()
 }
 
 func fzf(options []string) (result []string) {
@@ -119,6 +158,5 @@ func fzf(options []string) (result []string) {
 	for _, line := range bytes.Split(out, nullbyte) {
 		result = append(result, string(line))
 	}
-	pp.Print(result)
 	return result
 }
