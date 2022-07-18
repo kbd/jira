@@ -1,0 +1,1 @@
+status in ("In Progress", Reopened, Accepted, "To Do", Created, Assigned, "Needs Grooming", "In Development", In-Progress) AND assignee in (currentUser()) ORDER BY updated DESC
