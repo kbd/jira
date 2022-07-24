@@ -11,7 +11,13 @@ func Fzf(options []string) (result []string) {
 	nullbyte := []byte{0}
 
 	// execute fzf, pass it options, return the selected options
-	cmd := exec.Command("fzf", "--read0", "--print0")
+	cmd := exec.Command(
+		"fzf",
+		"--read0",
+		"--print0",
+		"--preview", "./jira \"$(echo {} | cut -d' ' -f1)\"",
+		"--preview-window=down,60%",
+	)
 	cmd.Stderr = os.Stderr // fzf displays its interface over stderr
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

@@ -19,11 +19,11 @@ import (
 var CLI struct {
 	Tickets bool `help:"List tickets"`
 	Epics   bool `help:"list epics"`
-	View    struct {
-		View []string `arg:"" optional:""`
-	} `arg:"" help:"Issue(s) to view" xor:"File,Expression,View"`
-	File       string `short:"f" help:"Execute JQL expression in file" type:"path" xor:"File,Expression,View"`
-	Expression string `short:"e" help:"Execute JQL expression"  xor:"File,Expression,View"`
+	Op      struct {
+		Issue      []string `arg:"" optional:"" help:"Issue(s) to view"`
+		File       string   `short:"f" help:"Execute JQL expression in file" type:"path"`
+		Expression string   `short:"e" help:"Execute JQL expression"`
+	} `embed:"" default:"" cmd:"" required:"" xor:"File,Expression,Issue"`
 }
 
 type Client struct {
@@ -83,23 +83,23 @@ func main() {
 
 	// handle command line arguments
 	jql := ""
-	if CLI.File != "" || CLI.Expression != "" {
-		if CLI.File != "" {
-			jqlbytes, err := os.ReadFile(CLI.File)
+	if CLI.Op.File != "" || CLI.Op.Expression != "" {
+		if CLI.Op.File != "" {
+			jqlbytes, err := os.ReadFile(CLI.Op.File)
 			if err != nil {
-				log.Fatalf("couldn't read file: %s", CLI.File)
+				log.Fatalf("couldn't read file: %s", CLI.Op.File)
 			}
 			jql = string(jqlbytes)
-		} else if CLI.Expression != "" {
-			jql = CLI.Expression
+		} else if CLI.Op.Expression != "" {
+			jql = CLI.Op.Expression
 		}
 		// display issues
 		err = displayIssuesList(client, jql)
 		if err != nil {
 			log.Fatalf("error displaying issues: %s", err)
 		}
-	} else if len(CLI.View.View) > 0 {
-		err := displayIssues(client, CLI.View.View)
+	} else if len(CLI.Op.Issue) > 0 {
+		err := displayIssues(client, CLI.Op.Issue)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
@@ -110,6 +110,7 @@ func main() {
 }
 
 func displayIssues(client *Client, issues []string) error {
+	// fmt.Printf("Searching for issues: %#v\n", issues)
 	for _, i := range issues {
 		issue, _, err := client.Jira.Issue.Get(i, nil)
 		if err != nil {
