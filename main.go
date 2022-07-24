@@ -16,16 +16,14 @@ import (
 	"github.com/kbd/pps"
 )
 
-func main() {
-	pp.SetColorScheme(pps.Scheme)
+var CLI struct {
+	Tickets    bool   `help:"List tickets"`
+	Epics      bool   `help:"list epics"`
+	File       string `short:"f" help:"Execute JQL expression in file" type:"path" xor:"File,Expression"`
+	Expression string `short:"e" help:"Execute JQL expression" xor:"File,Expression"`
+}
 
-	var CLI struct {
-		Tickets    bool   `help:"List tickets"`
-		Epics      bool   `help:"list epics"`
-		File       string `short:"f" help:"Execute JQL expression in file" type:"path"`
-		Expression string `short:"e" help:"Execute JQL expression"`
-	}
-
+func parseCLI() {
 	ctx := kong.Parse(&CLI)
 	if ctx.Empty() {
 		if err := ctx.PrintUsage(true); err != nil {
@@ -40,6 +38,11 @@ func main() {
 			log.Fatalf(err.Error())
 		}
 	}
+}
+
+func main() {
+	pp.SetColorScheme(pps.Scheme)
+	parseCLI()
 
 	// grab required environment variables
 	jiraToken, ok := os.LookupEnv("JIRA_TOKEN")
@@ -51,11 +54,7 @@ func main() {
 		log.Fatal("expect JIRA_URL in environment")
 	}
 
-	// fmt.Printf("token: %s..., url: %s\n\n", token[0:5], url)
-	// pp.Println(CLI)
-
-	// run a method
-	// parse command line arguments and call whatever method through reflection
+	// handle command line arguments
 	jql := ""
 	if CLI.File != "" {
 		// fmt.Println("Got file: ", CLI.File)
@@ -65,6 +64,8 @@ func main() {
 		}
 		jql = string(jqlbytes)
 		// fmt.Println("Got jql:", jql)
+	} else if CLI.Expression != "" {
+		jql = CLI.Expression
 	}
 
 	// create the jira client
@@ -74,10 +75,18 @@ func main() {
 		log.Fatalf("couldn't create JIRA client: %s", err)
 	}
 
+	// display issues
+	err = displayIssues(client, jiraUrl, jql)
+	if err != nil {
+		log.Fatalf("error displaying issues: %s", err)
+	}
+}
+
+func displayIssues(client *jira.Client, jiraUrl, jql string) error {
 	// search for issues with the provided query
 	issues, _, err := client.Issue.Search(string(jql), nil)
 	if err != nil {
-		log.Fatalf("error in query: %s", err)
+		return fmt.Errorf("error in query: %w", err)
 	}
 
 	// show fuzzy finder for issues
@@ -100,13 +109,14 @@ func main() {
 	if code != 0 {
 		fmt.Printf("Got return code %d from process\n", code)
 	}
+	return nil
 }
 
 func openBrowser(url string) (returncode int) {
+	// farm out to python's cross-platform 'webbrowser' module
 	fmt.Printf("Launching: %s\n", url)
 	safeUrl := strings.ReplaceAll(url, "'", "\\'")
 	pythonCode := fmt.Sprintf("import webbrowser as b; b.open(r'%s')", safeUrl)
-	// fmt.Printf("Executing: %s\n", pythonCode)
 	cmd := exec.Command("python3", "-c", pythonCode)
 	if err := cmd.Run(); err != nil {
 		return 1
