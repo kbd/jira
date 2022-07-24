@@ -117,8 +117,24 @@ func displayIssues(client *Client, issues []string) error {
 			return err
 		}
 		fmt.Printf("Key: %s\n", issue.Key)
-		fmt.Printf("Summary: %s\n", issue.Fields.Summary)
-		fmt.Printf("Desc: %s\n", issue.Fields.Description)
+		fmt.Printf("\nSummary: %s\n", issue.Fields.Summary)
+		fmt.Printf("\nDesc:\n%s\n", issue.Fields.Description)
+
+		subtasks := issue.Fields.Subtasks
+		if len(subtasks) > 0 {
+			fmt.Printf("\nSubtasks:\n")
+			for _, s := range subtasks {
+				fmt.Printf("%s: %s\n", s.Fields.Summary, s.Fields.Description)
+			}
+		}
+
+		comments := issue.Fields.Comments.Comments
+		if len(comments) > 0 {
+			fmt.Printf("\nComments:\n")
+			for _, c := range comments {
+				fmt.Printf("%s: %s\n", c.Author.Name, c.Body)
+			}
+		}
 	}
 	return nil
 }
