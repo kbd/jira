@@ -109,7 +109,15 @@ func main() {
 }
 
 func displayIssues(client *Client, issues []string) error {
-	fmt.Printf("Issue id: %s", issues[0])
+	for _, i := range issues {
+		issue, _, err := client.Jira.Issue.Get(i, nil)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Key: %s\n", issue.Key)
+		fmt.Printf("Summary: %s\n", issue.Fields.Summary)
+		fmt.Printf("Desc: %s\n", issue.Fields.Description)
+	}
 	return nil
 }
 
