@@ -17,10 +17,13 @@ import (
 )
 
 var CLI struct {
-	Tickets    bool   `help:"List tickets"`
-	Epics      bool   `help:"list epics"`
-	File       string `short:"f" help:"Execute JQL expression in file" type:"path" xor:"File,Expression"`
-	Expression string `short:"e" help:"Execute JQL expression" xor:"File,Expression"`
+	Tickets bool `help:"List tickets"`
+	Epics   bool `help:"list epics"`
+	View    struct {
+		Ids []string `arg:""`
+	} `cmd:"" help:"Issue(s) to view" xor:"File,Expression,View"`
+	File       string `short:"f" help:"Execute JQL expression in file" type:"path" xor:"File,Expression,View"`
+	Expression string `short:"e" help:"Execute JQL expression"  xor:"File,Expression,View"`
 }
 
 type Client struct {
@@ -72,34 +75,50 @@ func main() {
 		log.Fatal("expect JIRA_URL in environment")
 	}
 
-	// handle command line arguments
-	jql := ""
-	if CLI.File != "" {
-		// fmt.Println("Got file: ", CLI.File)
-		jqlbytes, err := os.ReadFile(CLI.File)
-		if err != nil {
-			log.Fatalf("couldn't read file: %s", CLI.File)
-		}
-		jql = string(jqlbytes)
-		// fmt.Println("Got jql:", jql)
-	} else if CLI.Expression != "" {
-		jql = CLI.Expression
-	}
-
 	// create the jira client
 	client, err := NewClient(jiraUrl, jiraToken)
 	if err != nil {
 		log.Fatalf("couldn't create JIRA client: %s", err)
 	}
 
-	// display issues
-	err = displayIssues(client, jql)
-	if err != nil {
-		log.Fatalf("error displaying issues: %s", err)
+	// handle command line arguments
+	jql := ""
+	if CLI.File != "" || CLI.Expression != "" {
+		if CLI.File != "" {
+			// fmt.Println("Got file: ", CLI.File)
+			jqlbytes, err := os.ReadFile(CLI.File)
+			if err != nil {
+				log.Fatalf("couldn't read file: %s", CLI.File)
+			}
+			jql = string(jqlbytes)
+			// fmt.Println("Got jql:", jql)
+		} else if CLI.Expression != "" {
+			jql = CLI.Expression
+		}
+		// display issues
+		err = displayIssuesList(client, jql)
+		if err != nil {
+			log.Fatalf("error displaying issues: %s", err)
+		}
+	} else if len(CLI.View.Ids) > 0 {
+		err := displayIssues(client, CLI.View.Ids)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
 	}
 }
 
-func displayIssues(client *Client, jql string) error {
+func displayIssues(client *Client, issues []string) error {
+	fmt.Printf("Issue id: %s", issues[0])
+	return nil
+}
+
+func displayIssuesList(client *Client, jql string) error {
+	os.Stderr.WriteString(fmt.Sprintf("Executing jql: '%s'\n", jql))
+	if jql == "" {
+		return fmt.Errorf("empty JQL expression provided")
+	}
+
 	// search for issues with the provided query
 	issues, _, err := client.Jira.Issue.Search(string(jql), nil)
 	if err != nil {
