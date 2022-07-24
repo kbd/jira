@@ -1,4 +1,4 @@
-module example.com/jira
+module github.com/kbd/jira
 
 go 1.18
 

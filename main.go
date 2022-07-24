@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/andygrunwald/go-jira"
 	"github.com/k0kubun/pp/v3"
+	"github.com/kbd/jira/util"
 	"github.com/kbd/pps"
 )
 
@@ -85,7 +85,7 @@ func main() {
 	for i, issue := range issues {
 		options[i] = fmt.Sprintf("%s ('%s'): %s", issue.Key, issue.Fields.Status.Name, issue.Fields.Summary)
 	}
-	result := fzf(options)
+	result := util.Fzf(options)
 	if len(result) == 0 { // nothing chosen
 		os.Exit(0)
 	}
@@ -121,42 +121,4 @@ func getIssueUrlForKey(jiraUrl, key string) (issueUrl string) {
 	}
 	parsedUrl.Path = path.Join(parsedUrl.Path, "browse", key)
 	return parsedUrl.String()
-}
-
-func fzf(options []string) (result []string) {
-	nullbyte := []byte{0}
-
-	// execute fzf, pass it options, return the selected options
-	cmd := exec.Command("fzf", "--read0", "--print0")
-	cmd.Stderr = os.Stderr // fzf displays its interface over stderr
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// asynchronously write stdin options to fzf
-	go func() {
-		for _, o := range options {
-			// todo: ignore io errors for now, crashing is fine
-			stdin.Write([]byte(o))
-			stdin.Write(nullbyte)
-		}
-		stdin.Close()
-	}()
-
-	// get fzf result
-	out, err := cmd.Output()
-	if err != nil {
-		if err.(*exec.ExitError).ExitCode() == 130 {
-			return result // 130 is intentional exit from fzf, return nothing
-		}
-		log.Fatal(err)
-	}
-
-	// trim off the trailing null from fzf before splitting
-	out = bytes.TrimRight(out, "\x00")
-	for _, line := range bytes.Split(out, nullbyte) {
-		result = append(result, string(line))
-	}
-	return result
 }
