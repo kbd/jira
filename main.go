@@ -20,8 +20,8 @@ var CLI struct {
 	Tickets bool `help:"List tickets"`
 	Epics   bool `help:"list epics"`
 	View    struct {
-		Ids []string `arg:""`
-	} `cmd:"" help:"Issue(s) to view" xor:"File,Expression,View"`
+		View []string `arg:"" optional:""`
+	} `arg:"" help:"Issue(s) to view" xor:"File,Expression,View"`
 	File       string `short:"f" help:"Execute JQL expression in file" type:"path" xor:"File,Expression,View"`
 	Expression string `short:"e" help:"Execute JQL expression"  xor:"File,Expression,View"`
 }
@@ -85,13 +85,11 @@ func main() {
 	jql := ""
 	if CLI.File != "" || CLI.Expression != "" {
 		if CLI.File != "" {
-			// fmt.Println("Got file: ", CLI.File)
 			jqlbytes, err := os.ReadFile(CLI.File)
 			if err != nil {
 				log.Fatalf("couldn't read file: %s", CLI.File)
 			}
 			jql = string(jqlbytes)
-			// fmt.Println("Got jql:", jql)
 		} else if CLI.Expression != "" {
 			jql = CLI.Expression
 		}
@@ -100,11 +98,14 @@ func main() {
 		if err != nil {
 			log.Fatalf("error displaying issues: %s", err)
 		}
-	} else if len(CLI.View.Ids) > 0 {
-		err := displayIssues(client, CLI.View.Ids)
+	} else if len(CLI.View.View) > 0 {
+		err := displayIssues(client, CLI.View.View)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
+	} else {
+		os.Stderr.WriteString("No action")
+		os.Exit(1)
 	}
 }
 
