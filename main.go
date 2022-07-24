@@ -23,6 +23,24 @@ var CLI struct {
 	Expression string `short:"e" help:"Execute JQL expression" xor:"File,Expression"`
 }
 
+type Client struct {
+	Url  string
+	Jira *jira.Client
+}
+
+func NewClient(url, token string) (*Client, error) {
+	tp := jira.BearerAuthTransport{Token: token}
+	jiraclient, err := jira.NewClient(tp.Client(), url)
+	if err != nil {
+		return nil, err
+	}
+	client := &Client{
+		Url:  url,
+		Jira: jiraclient,
+	}
+	return client, nil
+}
+
 func parseCLI() {
 	ctx := kong.Parse(&CLI)
 	if ctx.Empty() {
@@ -69,22 +87,21 @@ func main() {
 	}
 
 	// create the jira client
-	tp := jira.BearerAuthTransport{Token: jiraToken}
-	client, err := jira.NewClient(tp.Client(), jiraUrl)
+	client, err := NewClient(jiraUrl, jiraToken)
 	if err != nil {
 		log.Fatalf("couldn't create JIRA client: %s", err)
 	}
 
 	// display issues
-	err = displayIssues(client, jiraUrl, jql)
+	err = displayIssues(client, jql)
 	if err != nil {
 		log.Fatalf("error displaying issues: %s", err)
 	}
 }
 
-func displayIssues(client *jira.Client, jiraUrl, jql string) error {
+func displayIssues(client *Client, jql string) error {
 	// search for issues with the provided query
-	issues, _, err := client.Issue.Search(string(jql), nil)
+	issues, _, err := client.Jira.Issue.Search(string(jql), nil)
 	if err != nil {
 		return fmt.Errorf("error in query: %w", err)
 	}
@@ -104,7 +121,7 @@ func displayIssues(client *jira.Client, jiraUrl, jql string) error {
 	for _, r := range result {
 		keys = append(keys, strings.SplitN(r, " ", 2)[0])
 	}
-	issueUrl := getIssueUrlForKey(jiraUrl, keys[0])
+	issueUrl := getIssueUrlForKey(client.Url, keys[0])
 	code := openBrowser(issueUrl)
 	if code != 0 {
 		fmt.Printf("Got return code %d from process\n", code)
