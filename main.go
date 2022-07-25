@@ -12,7 +12,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/andygrunwald/go-jira"
 	"github.com/k0kubun/pp/v3"
-	"github.com/kbd/jira/util"
+	"github.com/kbd/jira/pkg/util"
 	"github.com/kbd/pps"
 )
 
