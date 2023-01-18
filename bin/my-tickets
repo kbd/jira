@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-set -Eeuxo pipefail
-bin/run -f ./jql/assignee.jql
