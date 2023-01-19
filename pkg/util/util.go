@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -15,7 +16,7 @@ func Fzf(options []string) (result []string) {
 		"fzf",
 		"--read0",
 		"--print0",
-		"--preview", "./jira \"$(echo {} | cut -d' ' -f1)\"",
+		"--preview", fmt.Sprintf("%s \"$(echo {} | cut -d' ' -f1)\"", os.Args[0]),
 		"--preview-window=down,70%",
 		"--height=80%",
 	)
