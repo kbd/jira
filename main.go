@@ -9,8 +9,10 @@ import (
 	"path"
 	"strings"
 
+	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/alecthomas/kong"
 	"github.com/andygrunwald/go-jira"
+	"github.com/charmbracelet/glamour"
 	"github.com/k0kubun/pp/v3"
 	"github.com/kbd/jira/pkg/util"
 	"github.com/kbd/pps"
@@ -117,31 +119,48 @@ func main() {
 }
 
 func displayIssues(client *Client, issues []string) error {
-	// fmt.Printf("Searching for issues: %#v\n", issues)
+	converter := md.NewConverter("", true, nil)
+	buffer := strings.Builder{}
 	for _, i := range issues {
-		issue, _, err := client.Jira.Issue.Get(i, nil)
+		opts := jira.GetQueryOptions{
+			Expand: "renderedFields",
+		}
+		issue, _, err := client.Jira.Issue.Get(i, &opts)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Key: %s\n", issue.Key)
-		fmt.Printf("\nSummary: %s\n", issue.Fields.Summary)
-		fmt.Printf("\nDesc:\n%s\n", issue.Fields.Description)
+		buffer.WriteString(fmt.Sprintf("# Key: %s\n", issue.Key))
+		buffer.WriteString(fmt.Sprintf("# Summary: %s\n", issue.Fields.Summary))
+
+		// convert Jira's HTML rendered from ADF to markdown
+		desc := issue.RenderedFields.Description
+		desc, err = converter.ConvertString(desc)
+		if err != nil {
+			return fmt.Errorf("couldn't convert HTML to markdown: %w", err)
+		}
+		buffer.WriteString(fmt.Sprintf("# Desc\n%s\n", desc))
 
 		subtasks := issue.Fields.Subtasks
 		if len(subtasks) > 0 {
-			fmt.Printf("\nSubtasks:\n")
+			buffer.WriteString("# Subtasks\n")
 			for _, s := range subtasks {
-				fmt.Printf("%s: %s\n", s.Fields.Summary, s.Fields.Description)
+				buffer.WriteString(fmt.Sprintf("%s: %s\n", s.Fields.Summary, s.Fields.Description))
 			}
 		}
 
 		comments := issue.Fields.Comments.Comments
 		if len(comments) > 0 {
-			fmt.Printf("\nComments:\n")
+			buffer.WriteString("# Comments\n")
 			for _, c := range comments {
-				fmt.Printf("%s: %s\n", c.Author.Name, c.Body)
+				comment := fmt.Sprintf("**%s**: %s\n", c.Author.DisplayName, c.Body)
+				buffer.WriteString(comment)
 			}
 		}
+		out, err := glamour.Render(buffer.String(), "dark")
+		if err != nil {
+			return fmt.Errorf("couldn't render markdown: %w", err)
+		}
+		fmt.Println(out)
 	}
 	return nil
 }

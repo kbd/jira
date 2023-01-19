@@ -16,8 +16,8 @@ func Fzf(options []string) (result []string) {
 		"--read0",
 		"--print0",
 		"--preview", "./jira \"$(echo {} | cut -d' ' -f1)\"",
-		"--preview-window=down,60%",
-		"--height=50%",
+		"--preview-window=down,70%",
+		"--height=80%",
 	)
 	cmd.Stderr = os.Stderr // fzf displays its interface over stderr
 	stdin, err := cmd.StdinPipe()
