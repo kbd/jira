@@ -118,49 +118,58 @@ func main() {
 	}
 }
 
-func displayIssues(client *Client, issues []string) error {
+func displayIssue(client *Client, issueKey string) error {
 	converter := md.NewConverter("", true, nil)
 	buffer := strings.Builder{}
-	for _, i := range issues {
-		opts := jira.GetQueryOptions{
-			Expand: "renderedFields",
+
+	opts := jira.GetQueryOptions{
+		Expand: "renderedFields",
+	}
+	issue, _, err := client.Jira.Issue.Get(issueKey, &opts)
+	if err != nil {
+		return err
+	}
+	buffer.WriteString(fmt.Sprintf("# %s: %s\n", issue.Key, issue.Fields.Summary))
+
+	// convert Jira's HTML rendered from ADF to markdown
+	desc := issue.RenderedFields.Description
+	desc, err = converter.ConvertString(desc)
+	if err != nil {
+		return fmt.Errorf("couldn't convert HTML to markdown: %w", err)
+	}
+	buffer.WriteString(desc)
+	buffer.WriteString("\n")
+
+	subtasks := issue.Fields.Subtasks
+	if len(subtasks) > 0 {
+		buffer.WriteString("# Subtasks\n")
+		for _, s := range subtasks {
+			buffer.WriteString(fmt.Sprintf("%s: %s\n", s.Fields.Summary, s.Fields.Description))
 		}
-		issue, _, err := client.Jira.Issue.Get(i, &opts)
+	}
+
+	comments := issue.Fields.Comments.Comments
+	if len(comments) > 0 {
+		buffer.WriteString("# Comments\n")
+		for _, c := range comments {
+			comment := fmt.Sprintf("**%s**: %s\n", c.Author.DisplayName, c.Body)
+			buffer.WriteString(comment)
+		}
+	}
+	out, err := glamour.Render(buffer.String(), "dark")
+	if err != nil {
+		return fmt.Errorf("couldn't render markdown: %w", err)
+	}
+	fmt.Println(out)
+	return nil
+}
+
+func displayIssues(client *Client, issues []string) error {
+	for _, i := range issues {
+		err := displayIssue(client, i)
 		if err != nil {
 			return err
 		}
-		buffer.WriteString(fmt.Sprintf("# Key: %s\n", issue.Key))
-		buffer.WriteString(fmt.Sprintf("# Summary: %s\n", issue.Fields.Summary))
-
-		// convert Jira's HTML rendered from ADF to markdown
-		desc := issue.RenderedFields.Description
-		desc, err = converter.ConvertString(desc)
-		if err != nil {
-			return fmt.Errorf("couldn't convert HTML to markdown: %w", err)
-		}
-		buffer.WriteString(fmt.Sprintf("# Desc\n%s\n", desc))
-
-		subtasks := issue.Fields.Subtasks
-		if len(subtasks) > 0 {
-			buffer.WriteString("# Subtasks\n")
-			for _, s := range subtasks {
-				buffer.WriteString(fmt.Sprintf("%s: %s\n", s.Fields.Summary, s.Fields.Description))
-			}
-		}
-
-		comments := issue.Fields.Comments.Comments
-		if len(comments) > 0 {
-			buffer.WriteString("# Comments\n")
-			for _, c := range comments {
-				comment := fmt.Sprintf("**%s**: %s\n", c.Author.DisplayName, c.Body)
-				buffer.WriteString(comment)
-			}
-		}
-		out, err := glamour.Render(buffer.String(), "dark")
-		if err != nil {
-			return fmt.Errorf("couldn't render markdown: %w", err)
-		}
-		fmt.Println(out)
 	}
 	return nil
 }
