@@ -6,4 +6,13 @@ run *args:
 debug *args:
 	dlv debug -- "$@"
 
+build:
+	go build -o jira main.go
+
+test:
+	go test ./...
+
+lint:
+	golangci-lint run
+
 my-issues: (run "-f" "./jql/assignee.jql")
