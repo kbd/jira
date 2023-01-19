@@ -7,6 +7,8 @@
 [Generate a Jira API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/).
 See the [`go-jira` authentication documentation](https://pkg.go.dev/github.com/andygrunwald/go-jira@v1.16.0#readme-authentication).
 
+Requires [`fzf`](https://github.com/junegunn/fzf) to be installed.
+
 ## Environment variables
 
 Example `.envrc`:
