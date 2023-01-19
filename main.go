@@ -31,8 +31,11 @@ type Client struct {
 	Jira *jira.Client
 }
 
-func NewClient(url, token string) (*Client, error) {
-	tp := jira.BearerAuthTransport{Token: token}
+func NewClient(url, user, token string) (*Client, error) {
+	tp := jira.BasicAuthTransport{
+		Username: user,
+		Password: token,
+	}
 	jiraclient, err := jira.NewClient(tp.Client(), url)
 	if err != nil {
 		return nil, err
@@ -74,9 +77,13 @@ func main() {
 	if !ok {
 		log.Fatal("expect JIRA_URL in environment")
 	}
+	jiraUser, ok := os.LookupEnv("JIRA_USER")
+	if !ok {
+		log.Fatal("expect JIRA_USER in environment")
+	}
 
 	// create the jira client
-	client, err := NewClient(jiraUrl, jiraToken)
+	client, err := NewClient(jiraUrl, jiraUser, jiraToken)
 	if err != nil {
 		log.Fatalf("couldn't create JIRA client: %s", err)
 	}
@@ -89,7 +96,7 @@ func main() {
 			if err != nil {
 				log.Fatalf("couldn't read file: %s", CLI.Op.File)
 			}
-			jql = string(jqlbytes)
+			jql = strings.TrimSpace(string(jqlbytes))
 		} else if CLI.Op.Expression != "" {
 			jql = CLI.Op.Expression
 		}
@@ -104,7 +111,7 @@ func main() {
 			log.Fatalf(err.Error())
 		}
 	} else {
-		os.Stderr.WriteString("No action")
+		os.Stderr.WriteString("No action\n")
 		os.Exit(1)
 	}
 }

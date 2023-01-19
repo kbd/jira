@@ -27,12 +27,12 @@ func Fzf(options []string) (result []string) {
 
 	// asynchronously write stdin options to fzf
 	go func() {
+		defer stdin.Close()
 		for _, o := range options {
 			// todo: ignore io errors for now, crashing is fine
 			stdin.Write([]byte(o))
 			stdin.Write(nullbyte)
 		}
-		stdin.Close()
 	}()
 
 	// get fzf result
