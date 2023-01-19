@@ -15,4 +15,4 @@ test:
 lint:
 	golangci-lint run
 
-my-issues: (run "-f" "./jql/assignee.jql")
+my-issues: (run "-f" "./jql/my-issues.jql")
