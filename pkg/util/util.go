@@ -30,9 +30,14 @@ func Fzf(options []string) (result []string) {
 	go func() {
 		defer stdin.Close()
 		for _, o := range options {
-			// todo: ignore io errors for now, crashing is fine
-			stdin.Write([]byte(o))
-			stdin.Write(nullbyte)
+			_, err = stdin.Write([]byte(o))
+			if err != nil {
+				log.Fatal(err)
+			}
+			_, err = stdin.Write(nullbyte)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}()
 
