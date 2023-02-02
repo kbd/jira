@@ -1,0 +1,1 @@
+status in ("Done") AND assignee in (currentUser()) ORDER BY updated DESC
